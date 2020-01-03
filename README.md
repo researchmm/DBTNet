@@ -39,11 +39,13 @@ tar -xvf cub.tar
 
 ## Train the model on ImageNet dataset:
 ```
+cd code/
 bash train_imagenet_dbt.sh
 ```
 
 ## Fine-tune the model on CUB-200-2011 dataset:
 ```
+cd code/
 bash ft_cub_dbt.sh
 ```
 Note that the pretrained model will be upload soon.
