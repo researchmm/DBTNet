@@ -120,7 +120,7 @@ class GB2HybridLayer(gluon.HybridBlock):
         tmp = tmp.reshape((-1,self.groups,self.per_group))
         tmp = F.transpose(data=tmp, axes=(0,2,1))
         tmp = tmp.astype('float32')
-        tmp = F.tanh(F.BatchDot(data1 = tmp, data2 = tmp)/32).reshape((-1,self.width,self.width,self.per_group*self.per_group))
+        tmp = F.tanh(F.batch_dot(lhs = tmp, rhs = tmp, transpose_a = False, transpose_b = True)/32).reshape((-1,self.width,self.width,self.per_group*self.per_group))
         tmp = F.contrib.BilinearResize2D(data = tmp, height = self.width, width = np.int(self.per_group*self.per_group*0.5))
         tmp = tmp.astype('float16')
 #        tmp = tmp.reshape((-1,self.width,self.width,np.int(self.per_group*self.per_group*0.5)))
@@ -154,10 +154,11 @@ class GB3HybridLayer(gluon.HybridBlock):
         tmp = tmp.reshape((-1,self.groups,self.per_group))
         tmp = F.transpose(data=tmp, axes=(0,2,1))
         tmp = tmp.astype('float32')
-        tmp = F.tanh(F.BatchDot(data1 = tmp, data2 = tmp)/32).reshape((-1,self.width,self.width,self.per_group*self.per_group))
+        tmp = F.tanh(F.batch_dot(lhs = tmp, rhs = tmp, transpose_a = False, transpose_b = True)/32).reshape((-1,self.width,self.width,self.per_group*self.per_group))
         tmp = F.contrib.BilinearResize2D(data = tmp, height = self.width, width = np.int(self.per_group*self.per_group))
         tmp = tmp.astype('float16')
 #        tmp = tmp.reshape((-1,self.width,self.width,np.int(self.per_group*self.per_group*0.5)))
+
         return x + self.body(F.transpose(data = tmp, axes=(0,3,1,2)))
 
 class GB4HybridLayer(gluon.HybridBlock):
@@ -189,7 +190,7 @@ class GB4HybridLayer(gluon.HybridBlock):
         tmp = tmp.reshape((-1,self.groups,self.per_group))
         tmp = F.transpose(data=tmp, axes=(0,2,1))
         tmp = tmp.astype('float32')
-        tmp = F.tanh(F.BatchDot(data1 = tmp, data2 = tmp)/32).reshape((-1,self.width,self.width,self.per_group*self.per_group))
+        tmp = F.tanh(F.batch_dot(lhs = tmp, rhs = tmp, transpose_a=False, transpose_b=True)/32).reshape((-1,self.width,self.width,self.per_group*self.per_group))
         tmp = F.contrib.BilinearResize2D(data = tmp, height = self.width, width = np.int(self.per_group*self.per_group*0.5))
         tmp = tmp.astype('float16')
 #        tmp = tmp.reshape((-1,self.width,self.width,np.int(self.per_group*self.per_group*0.5)))
@@ -199,7 +200,9 @@ class GB4HybridLayer(gluon.HybridBlock):
 class GroupConv(nn.Conv2D):
     def __init__(self, *args, **kwargs):
         self.width=kwargs['width']
+        self.batch_size=kwargs['batch_size']
         del kwargs['width']
+        del kwargs['batch_size']
         super(GroupConv, self).__init__(*args, **kwargs)
         self.body = nn.BatchNorm()
     def hybrid_forward(self, F, x, weight, bias=None):
@@ -218,7 +221,7 @@ class GroupConv(nn.Conv2D):
 #        co = F.BatchDot(tmp,tmp).astype('float16').reshape((128,channels*channels))
         gt = F.tile(F.ones(groups).diag().reshape((1, 1, groups, groups)),(1, np.int((channels/groups)*(channels/groups)), 1, 1))
         gt = F.depth_to_space(gt, np.int(channels/groups)).astype('float16').reshape((1,channels*channels))
-        loss = F.tile(F.sum((co-gt)*(co-gt)*0.001,axis=1),(48))/((channels/512.0)*(channels/512.0))
+        loss = F.tile(F.sum((co-gt)*(co-gt)*0.001,axis=1),(self.batch_size))/((channels/512.0)*(channels/512.0))
 #        loss = (co-gt)*(co-gt)
         self.loss = loss
         return act
@@ -227,7 +230,9 @@ class GroupConv(nn.Conv2D):
 class GroupConv2(nn.Conv2D):
     def __init__(self, *args, **kwargs):
         self.width=kwargs['width']
+        self.batch_size=kwargs['batch_size']
         del kwargs['width']
+        del kwargs['batch_size']
         super(GroupConv2, self).__init__(*args, **kwargs)
         self.body = nn.BatchNorm()
     def hybrid_forward(self, F, x, weight, bias=None):
@@ -246,7 +251,7 @@ class GroupConv2(nn.Conv2D):
 #        co = F.BatchDot(tmp,tmp).astype('float16').reshape((128,channels*channels))
         gt = F.tile(F.ones(groups).diag().reshape((1, 1, groups, groups)),(1, np.int((channels/groups)*(channels/groups)), 1, 1))
         gt = F.depth_to_space(gt, np.int(channels/groups)).astype('float16').reshape((1,channels*channels))
-        loss = F.tile(F.sum((co-gt)*(co-gt)*0.001,axis=1),(48))/((channels/512.0)*(channels/512.0))
+        loss = F.tile(F.sum((co-gt)*(co-gt)*0.001,axis=1),(self.batch_size))/((channels/512.0)*(channels/512.0))
 #        loss = (co-gt)*(co-gt)
         self.loss = loss
         return act
@@ -308,13 +313,14 @@ class Block(HybridBlock):
 
 
 class Block3(HybridBlock):
-    def __init__(self, channels, stride, myname,
+    def __init__(self, channels, stride, myname, batch_size, width,
                  downsample=False, last_gamma=False, use_se=False, **kwargs):
         super(Block3, self).__init__(**kwargs)
-        width = np.int(56*64/channels*stride)*2
+
+        width = width//16*stride
 
         self.body = nn.HybridSequential(prefix='')
-        gconv = GroupConv(channels, kernel_size=1, use_bias=False, width=width)
+        gconv = GroupConv(channels, batch_size=batch_size, kernel_size=1, use_bias=False, width=width)
         self.gconv = gconv
         self.body.add(gconv)
         self.body.add(GB3HybridLayer(16, np.int(channels/16), width, myname))
@@ -366,13 +372,12 @@ class Block3(HybridBlock):
         return x
 
 class Block4(HybridBlock):
-    def __init__(self, channels, stride, myname,
+    def __init__(self, channels, stride, myname, batch_size, width,
                  downsample=False, last_gamma=False, use_se=False, **kwargs):
         super(Block4, self).__init__(**kwargs)
-        width = np.int(56*64/channels*stride)*2
-
+        width = width//32*stride
         self.body = nn.HybridSequential(prefix='')
-        gconv = GroupConv(channels, kernel_size=1, use_bias=False, width=width)
+        gconv = GroupConv(channels, batch_size=batch_size, kernel_size=1, use_bias=False, width=width)
         self.gconv = gconv
         self.body.add(gconv)
         self.body.add(GB4HybridLayer(16, np.int(channels/16), width, myname))
@@ -424,7 +429,7 @@ class Block4(HybridBlock):
         return x
 # Nets
 class DBTNet(HybridBlock):
-    def __init__(self, layers, classes=1000, last_gamma=False, **kwargs):
+    def __init__(self, layers, batch_size, width, classes=1000, last_gamma=False, **kwargs):
         super(DBTNet, self).__init__(**kwargs)
         channels = 64
         self.gconvs = nn.HybridSequential(prefix='')
@@ -442,12 +447,12 @@ class DBTNet(HybridBlock):
             for i, num_layer in enumerate(layers):
                 stride = 1 if i == 0 else 2
                 self.features.add(self._make_layer(channels, num_layer, stride,
-                                                   last_gamma, False, i+1))
+                                                   last_gamma, False, i+1, batch_size, width))
                 channels *= 2
-            gconv = GroupConv2(2048, kernel_size=1, use_bias=False, width=14)
+            gconv = GroupConv2(2048, batch_size=batch_size, kernel_size=1, use_bias=False, width=width//32)
             self.gconvs.add(gconv)
             self.features.add(gconv)
-            self.features.add(GB2HybridLayer(32, np.int(2048/32), 14, 'gb'))
+            self.features.add(GB2HybridLayer(32, np.int(2048/32), width//32, 'gb'))
             self.features1.add(nn.GlobalAvgPool2D())
             self.features1.add(nn.Flatten())
 
@@ -455,7 +460,7 @@ class DBTNet(HybridBlock):
         with self.myoutput.name_scope():
             self.myoutput.add(nn.Conv2D(classes, kernel_size=1, padding=0, use_bias=True))
 
-    def _make_layer(self, channels, num_layers, stride, last_gamma, use_se, stage_index):
+    def _make_layer(self, channels, num_layers, stride, last_gamma, use_se, stage_index, batch_size, width):
         layer = nn.HybridSequential(prefix='stage%d_'%stage_index)
         with layer.name_scope():
             if stage_index<3:
@@ -465,23 +470,23 @@ class DBTNet(HybridBlock):
                     myblock = Block(channels, 1, False, last_gamma=last_gamma, use_se=use_se, prefix='')
                     layer.add(myblock)
             elif stage_index==3:
-                myblock = Block3(channels, stride, 0, True, last_gamma=last_gamma, use_se=use_se, prefix='')
+                myblock = Block3(channels, stride, 0, batch_size, width, True, last_gamma=last_gamma, use_se=use_se, prefix='')
                 layer.add(myblock)
 #                with self.gconvs.name_scope:
                 self.gconvs.add(myblock.gconv)
                 for i in range(num_layers-1):
-                    myblock = Block3(channels, 1, i+1, False, last_gamma=last_gamma, use_se=use_se, prefix='')
+                    myblock = Block3(channels, 1, i+1, batch_size, width, False, last_gamma=last_gamma, use_se=use_se, prefix='')
                     layer.add(myblock)
 #                with self.gconvs.name_scope:
                     self.gconvs.add(myblock.gconv)
 
             elif stage_index==4:
-                myblock = Block4(channels, stride, 0, True, last_gamma=last_gamma, use_se=use_se, prefix='')
+                myblock = Block4(channels, stride, 0, batch_size, width, True, last_gamma=last_gamma, use_se=use_se, prefix='')
                 layer.add(myblock)
 #                with self.gconvs.name_scope:
                 self.gconvs.add(myblock.gconv)
                 for i in range(num_layers-1):
-                    myblock = Block4(channels,1, i+1, False, last_gamma=last_gamma, use_se=use_se, prefix='')
+                    myblock = Block4(channels,1, i+1, batch_size, width, False, last_gamma=last_gamma, use_se=use_se, prefix='')
                     layer.add(myblock)
 #                with self.gconvs.name_scope:
                     self.gconvs.add(myblock.gconv)
@@ -510,15 +515,15 @@ resnet_spec = {50: [3, 4, 6, 3],
 
 
 # Constructor
-def get_dbt(num_layers, pretrained=False, ctx=cpu(),
+def get_dbt(num_layers, batch_size, width, pretrained=False, ctx=cpu(),
                 root=os.path.join('~', '.mxnet', 'models'), **kwargs):
     assert num_layers in resnet_spec, \
         "Invalid number of layers: %d. Options are %s"%(
             num_layers, str(resnext_spec.keys()))
     layers = resnet_spec[num_layers]
-    net = DBTNet(layers, **kwargs)
+    net = DBTNet(layers, batch_size, width, **kwargs)
     return net
 
-def dbt(**kwargs):
-    return get_dbt(50, 32, 4, **kwargs)
+def dbt(num_layers, batch_size, width, **kwargs):
+    return get_dbt(num_layers, batch_size, width, **kwargs)
 

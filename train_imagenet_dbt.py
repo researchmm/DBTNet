@@ -110,10 +110,11 @@ logger.addHandler(streamhandler)
 
 logger.info(opt)
 
-batch_size = opt.batch_size
-mybatch_size = opt.batch_size
+batch_size_per_gpu = opt.batch_size
+input_size = opt.input_size
 classes = 1000
 num_training_samples = 1281167
+batch_size = opt.batch_size
 
 num_gpus = opt.num_gpus
 batch_size *= max(1, num_gpus)
@@ -149,9 +150,9 @@ optimizer_params = {'wd': opt.wd, 'momentum': opt.momentum, 'lr_scheduler': lr_s
 if opt.dtype != 'float32':
     optimizer_params['multi_precision'] = True
 
-del kwargs['use_se']
+#del kwargs['use_se']
 #net = get_model(model_name, **kwargs)
-net = dbt(**kwargs)
+net = dbt(num_layers = 50, batch_size=batch_size_per_gpu, width=input_size, **kwargs)
 #net.collect_params().cast('float16')
 
 #for p in net.collect_params().values():
@@ -172,7 +173,6 @@ def get_data_rec(rec_train, rec_train_idx, rec_val, rec_val_idx, batch_size, num
     rec_val_idx = os.path.expanduser(rec_val_idx)
     jitter_param = 0.4
     lighting_param = 0.1
-    input_size = opt.input_size
     crop_ratio = opt.crop_ratio if opt.crop_ratio > 0 else 0.875
     resize = int(math.ceil(input_size / crop_ratio))
     mean_rgb = [123.68, 116.779, 103.939]
