@@ -1,5 +1,5 @@
 python3 train_imagenet_dbt.py \
-  --rec-train ../data/imagenet/val.rec --rec-train-idx ../data/imagenet/val.idx \
+  --rec-train ../data/imagenet/train.rec --rec-train-idx ../data/imagenet/train.idx \
   --rec-val ../data/imagenet/val.rec --rec-val-idx ../data/imagenet/val.idx \
   --model resnet50  --mode hybrid \
   --lr 0.4 --lr-mode cosine --num-epochs 120 --batch-size 128 --num-gpus 8 -j 60 \
