@@ -110,11 +110,12 @@ logger.addHandler(streamhandler)
 
 logger.info(opt)
 
-batch_size = opt.batch_size
-mybatch_size = opt.batch_size
+batch_size_per_gpu = opt.batch_size
+input_size = opt.input_size
 classes = 1000
 num_training_samples = 5994
 
+batch_size = opt.batch_size
 num_gpus = opt.num_gpus
 batch_size *= max(1, num_gpus)
 context = [mx.gpu(i) for i in range(num_gpus)] if num_gpus > 0 else [mx.cpu()]
@@ -149,14 +150,15 @@ optimizer_params = {'wd': opt.wd, 'momentum': opt.momentum, 'lr_scheduler': lr_s
 if opt.dtype != 'float32':
     optimizer_params['multi_precision'] = True
 
-del kwargs['use_se']
+#del kwargs['use_se']
 #net = get_model(model_name, **kwargs)
-net = dbt(**kwargs)
+#net = dbt(**kwargs)
+net = dbt(num_layers = 50, batch_size=batch_size_per_gpu, width=input_size, **kwargs)
 #net.collect_params().cast('float16')
 
 net.cast('float16')
 
-ft_params = '../../model/params_imagenet_dbt/imagenet_pretrain.params'
+ft_params = '../model/params_imagenet_dbt/dbt_imagenet.params'
 net.load_parameters(ft_params, ctx=context, allow_missing=True,  ignore_extra=True)
 classes = 200 
 
