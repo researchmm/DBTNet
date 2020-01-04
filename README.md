@@ -44,11 +44,12 @@ bash train_imagenet_dbt.sh
 ```
 
 ## Fine-tune the model on CUB-200-2011 dataset:
+The ImageNet pretrained ["model"](https://australiav100data.blob.core.windows.net/heliang/dbt_imagenet.params) is available.
+
 ```
 cd code/
 bash ft_cub_dbt.sh
 ```
-Note that the pretrained model will be upload soon.
 
 # Citation
 If any part of our paper and code is helpful to your work, please generously cite with:
