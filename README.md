@@ -51,6 +51,9 @@ cd code/
 bash ft_cub_dbt.sh
 ```
 
+# Pytorch Version
+On going. Welcome to reimplement and share the DBT code in pytorch.
+
 # Citation
 If any part of our paper and code is helpful to your work, please generously cite with:
 
