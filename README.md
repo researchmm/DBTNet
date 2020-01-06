@@ -3,15 +3,20 @@ MXNet version of the code for our NeurIPS'19 paper ["Learning Deep Bilinear Tran
 
 
 # Framework
+Bilinear feature transformation has shown the state-of-the-art performance in learning fine-grained image representations. The proposed DBTNet can deeply integrate bilinear features into CNN to learn fine-grained image representations:
 ![alt text](https://user-images.githubusercontent.com/35843017/71718086-15bc9600-2e55-11ea-98b9-14d9295c46be.jpg)
 
 # Main Results
 
 
-| Method     | CUB-200-2011 | Stanford-Car | Aircraft|
-| ---------- |:------------:|:------------:|:-------:|
-| DBTNet-50  | 87.5         | 94.1         |91.2     |
-| DBTNet-101 | 88.1         | 94.5         |91.6     |
+| Method           |Dimension| CUB-200-2011 | Stanford-Car | Aircraft|
+| -----------------|:-------:|:------------:|:------------:|:-------:|
+| Compact Bilinear | 14k     |   81.6       | 88.6         |81.6     |
+| Kernel Pooling   | 14k     |   84.7       | 91.1         |85.7     |
+| iSQRT-COV        | 8k      |   87.3       | 91.7         |89.5     |
+| iSQRT-COV        | 32k     |   88.1       | 92.8         |90.0     |
+| DBTNet-50        | 2k      |   87.5       | 94.1         |91.2     |
+| DBTNet-101       | 2k      |   88.1       | 94.5         |91.6     |
 
 # Prerequisites
 MXNet   1.3.1
