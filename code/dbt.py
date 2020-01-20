@@ -216,7 +216,7 @@ class GroupConv(nn.Conv2D):
         tmp = act+0.001
         tmp = F.L2Normalization(tmp.reshape((-1,width*width)), mode='instance')
         tmp = F.transpose(tmp.reshape((-1,channels,width*width)),axes=(1,0,2)).reshape((channels,-1))
-        co = F.dot(tmp,tmp,False,True).reshape((1,channels*channels))/128
+        co = F.dot(tmp,tmp,False,True).reshape((1,channels*channels))/self.batch_size
 #        tmp = tmp.reshape((-1,channels,width*width)).astype('float32')
 #        co = F.BatchDot(tmp,tmp).astype('float16').reshape((128,channels*channels))
         gt = F.tile(F.ones(groups).diag().reshape((1, 1, groups, groups)),(1, np.int((channels/groups)*(channels/groups)), 1, 1))
@@ -246,7 +246,7 @@ class GroupConv2(nn.Conv2D):
         tmp = act+0.001
         tmp = F.L2Normalization(tmp.reshape((-1,width*width)), mode='instance')
         tmp = F.transpose(tmp.reshape((-1,channels,width*width)),axes=(1,0,2)).reshape((channels,-1))
-        co = F.dot(tmp,tmp,False,True).reshape((1,channels*channels))/128
+        co = F.dot(tmp,tmp,False,True).reshape((1,channels*channels))/self.batch_size
 #        tmp = tmp.reshape((-1,channels,width*width)).astype('float32')
 #        co = F.BatchDot(tmp,tmp).astype('float16').reshape((128,channels*channels))
         gt = F.tile(F.ones(groups).diag().reshape((1, 1, groups, groups)),(1, np.int((channels/groups)*(channels/groups)), 1, 1))
